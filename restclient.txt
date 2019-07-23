@@ -1,0 +1,240 @@
+list-user.component.ts
+**********************
+import { Component, OnInit } from '@angular/core';
+import {UserService} from '../../shared_service/user.service';
+import {User} from  '../../user';
+import {Router} from '@angular/router';
+
+
+@Component({
+  selector: 'app-listuser',
+  templateUrl: './listuser.component.html',
+  styleUrls: ['./listuser.component.styl']
+})
+export class ListuserComponent implements OnInit {
+  private users:User[];
+
+  constructor(private _userService:UserService, private _router:Router) { }
+
+  ngOnInit() {
+this._userService.getUsers().subscribe((users)=>{
+  console.log(users);
+  this.users=users;
+},(error)=>{
+  console.log(error);
+})
+
+}
+
+deleteUser(user)
+{
+  this._userService.deleteUser(user.id).subscribe((data)=>{
+    this.users.splice(this.users.indexOf(user),1);
+  },(error)=>{
+    console.log(error);
+  });
+}
+
+
+updateUser(user){
+
+  this._userService.setter(user);
+  this._router.navigate(['/op']);
+
+
+}
+newUser(){
+  let user=new User();
+this._userService.setter(user);
+  this._router.navigate(['/op']);
+  
+}
+  }
+
+listuser.component.html
+***********************
+<div class="container">
+        <table  class="table table.striped">
+                <thead>
+                <th>Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Operations</th>
+                </thead>
+                <tbody>
+                    <tr *ngFor='let user of users'>
+                        <td>{{user.id}}</td>
+                        <td>{{user.fname}}</td>
+                        <td>{{user.lname}}</td>
+                        <td><button class="btn btn-danger" (click)="deleteUser(user)">Delete</button></td>
+                        <td><button class="btn btn-primary" (click)="updateUser(user)">Edit</button></td>
+                    </tr>
+                </tbody>
+                </table>
+                <td><button class="btn  btn-primary" (click)="newUser()">New User</button></td>
+</div>
+
+
+user-form.component.ts
+**********************
+import { Component, OnInit } from '@angular/core';
+import { User } from 'src/app/user';
+import {Router} from '@angular/router';
+import {UserService} from '../../shared_service/user.service';
+
+
+@Component({
+  selector: 'app-user-form',
+  templateUrl: './user-form.component.html',
+  styleUrls: ['./user-form.component.styl']
+})
+export class UserFormComponent implements OnInit {
+private user:User;
+
+  constructor(private _userService:UserService,private _router:Router) { }
+
+  ngOnInit() {
+    this.user=this._userService.getter();
+  }
+processForm(){
+  if(this.user.id==undefined){
+    this._userService.createUser(this.user).subscribe((user)=>{
+      console.log(user);
+      this._router.navigate(['/'])
+    },(error)=>{
+      console.log(error);
+    });
+  }else{
+    this._userService.updateUser(this.user).subscribe((user)=>{
+      console.log(user);
+      this._router.navigate(['/']);
+    },(error)=>{
+      console.log(error);
+    });
+  }
+}
+}
+
+
+userform.component.html
+***********************
+<div class="container">
+    <form (ngSubmit)="processForm()">
+        <div calss="form group">
+            <input type="text" name="id" calss="form-control" [(ngModel)]="user.id">
+        </div>
+        <div calss="form group">
+            <label for="fname">First Name</label>
+                <input type="text" name="fname" calss="form-control" [(ngModel)]="user.fname">
+            </div>
+            <div calss="form group">
+                    <label for="lname">Last Name</label>
+                    <input type="text" name="lname" calss="form-control" [(ngModel)]="user.lname">
+                </div>
+                <input type="submit" value="save" class="btn btn-success">
+    </form>
+</div>
+
+user.service.ts
+***************
+
+import { Injectable } from '@angular/core';
+import {Http,Response,Headers, RequestOptions} from '@angular/http';
+import {Observable} from 'rxjs/Observable';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/catch';
+import 'rxjs/add/observable/throw';
+import {User} from '../user';
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class UserService {
+private baseUrl:string='http://localhost:8086/api';
+private headers=new Headers({'content-Type':'application/json'});
+private options=new RequestOptions({headers:this.headers});
+private user:User;
+  constructor(private _http:Http) { }
+
+  getUsers(){
+    return this._http.get(this.baseUrl+'/users',this.options).map((response:Response)=>response.json())
+  .catch(this.errorHandler);
+  }
+
+
+  getUser(id:Number){
+    return this._http.get(this.baseUrl+'/user/'+id,this.options).map((response:Response)=>response.json())
+  .catch(this.errorHandler);
+  }
+
+
+  deleteUser(id:Number){
+    return this._http.delete(this.baseUrl+'/user/'+id,this.options).map((response:Response)=>response.json())
+  .catch(this.errorHandler);
+  }
+
+
+
+  createUser(user:User){
+    return this._http.post(this.baseUrl+'/user',JSON.stringify(user),this.options).map((response:Response)=>response.json())
+  .catch(this.errorHandler);
+  }
+
+  updateUser(user:User){
+    return this._http.put(this.baseUrl+'/user',JSON.stringify(user),this.options).map((response:Response)=>response.json)
+  .catch(this.errorHandler);
+  }
+ 
+ 
+  errorHandler(error:Response){
+    return Observable.throw(error||"SERVER ERROR");
+  }
+  setter(user:User){
+    this.user=user;
+  }
+  getter(){
+    return this.user;
+  }
+}
+
+app.module.ts
+*************
+
+import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from '@angular/core';
+import {RouterModule,Routes} from '@angular/router';
+import {HttpModule} from '@angular/http';
+import {FormsModule} from '@angular/forms';
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { ListuserComponent } from './components/listuser/listuser.component';
+import { UserFormComponent } from './components/user-form/user-form.component';
+import {UserService} from './shared_service/user.service';
+const appRoutes:Routes=[
+  {path:'',component:ListuserComponent},
+  {path:'op',component:UserFormComponent}
+];
+@NgModule({
+  declarations: [
+    AppComponent,
+    ListuserComponent,
+    UserFormComponent
+  ],
+  imports: [
+    BrowserModule,
+    HttpModule,
+    AppRoutingModule,
+    FormsModule,
+    RouterModule.forRoot(appRoutes)
+  ],
+  providers: [UserService],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+
+app.component.html
+******************
+<div class="container">
+  <router-outlet></router-outlet>
+</div>
